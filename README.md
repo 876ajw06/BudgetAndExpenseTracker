@@ -21,3 +21,15 @@ Use the package manager [pip](https://pip.pypa.io/en/stable/) to install tabulat
 ```bash
 pip install tabulate
 ```
+
+##Useage
+
+| Command | Description | Example |
+| -------- | -------- | -------- |
+| Add   | Prompts user to enter a new expense  | placeholder  |
+| show  | Allows user to view all recorded expenses  | Row 2 C  |
+|delete | |
+|search <type> | |
+|range |  |
+|-h or --help | |
+|quit or exit | |
