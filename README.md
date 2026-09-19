@@ -26,10 +26,10 @@ pip install tabulate
 
 | Command | Description | Example |
 | -------- | -------- | -------- |
-| Add   | Prompts user to enter a new expense  | placeholder  |
-| show  | Allows user to view all recorded expenses  | Row 2 C  |
-|delete | |
-|search <type> | |
-|range |  |
-|-h or --help | |
-|quit or exit | |
+| Add   | Prompts user to enter a new expense  | budget> add |
+| show  | Allows user to view all recorded expenses  | budget> show  |
+|delete | Prompts user for an item and removes item if found| budget> show|
+|search <type> | Allows user to search for a price, name, or category | budget> search price |
+|range | Allows user to get expense total from a range of dates | budget> range |
+|-h or help |Brings up a menu of all commands | budget> help |
+|quit or exit | Quits the program | budget> exit |
