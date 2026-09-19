@@ -19,10 +19,15 @@ class BudgetAndExpense():
         if expense is None: #if addexpense returns None, user input was invalid and we should return to main menu
             return
 
-        with open(self.file_path, 'a', newline="") as csvfile: #append will create the file if it does not already exist
+        file_needs_header = (
+            not self.file_path.exists()
+            or self.file_path.stat().st_size == 0
+        )
+
+        with open(self.file_path, 'a', newline="") as csvfile:
             csv_writer = csv.writer(csvfile)
-            
-            if not files_exists: #if no file exists, writes a file containing the headers and the first expense
+
+            if file_needs_header:
                 csv_writer.writerow(self.headers)
 
             csv_writer.writerow(expense)          
@@ -56,10 +61,13 @@ class BudgetAndExpense():
                 return
 
                 
-            with open(self.file_path, 'w', newline="") as csvfile: #item was found so rewriting file with valid rows 
-                csv_writer= csv.writer(csvfile, fieldnames=self.headers)
-                csv_writer.writeheder()
-                csv_writer.writerow(rows_to_keep)
+            with open(self.file_path, 'w', newline="") as csvfile:
+                csv_writer = csv.DictWriter(
+                    csvfile,
+                    fieldnames=self.headers
+                )
+                csv_writer.writeheader()
+                csv_writer.writerows(rows_to_keep)
 
             print(f"{to_delete} has been removed")
 
@@ -76,13 +84,14 @@ class BudgetAndExpense():
                 temp_list.append(input())
 
         try:
-            price = float(temp_list[2]) #trys to cast price to float to ensure it is valid
-        except:
+            price = float(temp_list[2]) #trys to cast to float to ensure validity 
+        except ValueError:
             print(f"{temp_list[2]} is not a valid price, returning to main menu")
             return
 
+        temp_list[2] = str(price)
 
-        if temp_list[3] is None: #checks if date is valid, if not returns to main menu
+        if temp_list[3] is None:
             print(f"{temp_list[3]} is not a valid date, returning to main menu")
             return
 
@@ -101,32 +110,35 @@ class BudgetAndExpense():
             print("No budget file exists. Please Add an expense to start a file")
 
     
-    def searchEntry(self) -> list:
-        """Return every expense whose name matches the requested entry."""
-        entry = input("Enter an entry name to search for: ").strip().lower()
-        if not self.file_path.exists():
+    def searchEntry(self, entry: str | None = None) -> list:
+        if entry is None:
+            entry = input("Enter an entry name to search for: ").strip()
+
+        target = entry.strip().lower()
+        if not target or not self.file_path.exists():
             return []
 
         with open(self.file_path, "r", newline="") as csvfile:
             return [
                 row for row in csv.DictReader(csvfile)
-                if row.get("name", "").strip().lower() == entry
+                if row.get("name", "").strip().lower() == target
             ]
 
-    def searchCategory(self) -> list:
-        """Return every expense in the requested category."""
-        category = input("Enter a category to search for: ").strip().lower()
-        if not self.file_path.exists():
+    def searchCategory(self, category: str | None = None) -> list:
+        if category is None:
+            category = input("Enter a category to search for: ").strip()
+
+        target = category.strip().lower()
+        if not target or not self.file_path.exists():
             return []
 
         with open(self.file_path, "r", newline="") as csvfile:
             return [
                 row for row in csv.DictReader(csvfile)
-                if row.get("category", "").strip().lower() == category
+                if row.get("category", "").strip().lower() == target
             ]
 
     def searchByPrice(self) -> list:
-        """Return expenses matching a requested price and comparison operator."""
         criteria = input("Enter a price criterion (=, >=, or <=): ").strip()
         if criteria not in ("=", ">=", "<="):
             print("Please enter one of: =, >=, <=")
@@ -156,12 +168,7 @@ class BudgetAndExpense():
                 ):
                     matches.append(row)
 
-            return matches
-
-    def searchbyPrice(self) -> list:
-        """Compatibility alias for the spelling used by the command description."""
-        return self.searchByPrice()
-         
+            return matches         
 
     def formatDate(self, date: str) -> datetime:
         #checks that user atleast entered M-D-YYYY
@@ -175,27 +182,38 @@ class BudgetAndExpense():
         
         
 
-    def expenseSumDateRange(self) -> int:
-        expense_sum = 0
-        first_date = input("Enter the starting date of the range (YYYY-MM-DD): ")
-        last_date = input("Enter the ending date of the range (YYYY-MM-DD): ")
-        
-        formattedFirstDate= self.formatDate(first_date)
-        formattedLastDate = self.formatDate(last_date)
+    def expenseSumDateRange(self, first_date: str | None = None, last_date: str | None = None) -> float:
+        #Return the sum of all expenses between two dates inclusive
+        if first_date is None:
+            first_date = input("Enter the starting date of the range (YYYY-MM-DD): ").strip()
+        if last_date is None:
+            last_date = input("Enter the ending date of the range (YYYY-MM-DD): ").strip()
 
-        if formattedFirstDate is None or formattedLastDate is None:
+        formatted_first_date = self.formatDate(first_date)
+        formatted_last_date = self.formatDate(last_date)
+
+        if formatted_first_date is None or formatted_last_date is None:
             print("Invalid date format, please try again")
-            return
+            return 0.0
 
-        if formattedFirstDate > formattedLastDate:
+        if formatted_first_date > formatted_last_date:
             print("First date must be before last date")
-            return
+            return 0.0
 
-        #iterates through csv rows expenses from dates in valid range
-        with open(self.budget_file, "r") as csvfile:
+        if not self.file_path.exists():
+            return 0.0
+
+        expense_sum = 0.0
+        with open(self.file_path, "r", newline="") as csvfile:
             csv_reader = csv.DictReader(csvfile)
             for row in csv_reader:
-                if formattedFirstDate <= datetime.date.strptime(row["date"],self.date_format) <= formattedLastDate: 
-                    expense_sum += float(row["price"])
+                try:
+                    row_date = datetime.datetime.strptime(row["date"], self.date_format).date()
+                    row_price = float(row["price"])
+                except (KeyError, TypeError, ValueError):
+                    continue
+
+                if formatted_first_date <= row_date <= formatted_last_date:
+                    expense_sum += row_price
 
         return expense_sum
